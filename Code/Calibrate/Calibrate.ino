@@ -15,8 +15,20 @@
 //Always remove the propellers and stay away from the motors unless you 
 //are 100% certain of what you are doing.
 ///////////////////////////////////////////////////////////////////////////////////////
+//  pitch | roll   --  throttle |  und yaw --
+//        ___                  ___
+//      /  |  \              /  |  \             
+//     | --o-- |            | --o-- |            
+//      \__|__/              \__|__/     
+        
+// am receiver: throttle = 1 ,   yaw =2,  pitch =3,   roll = 4
 
 
+#include <RunningMedian.h>
+RunningMedian rc_samples1 = RunningMedian(4);
+RunningMedian rc_samples2 = RunningMedian(4);
+RunningMedian rc_samples3 = RunningMedian(4);
+RunningMedian rc_samples4 = RunningMedian(4);
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //The program will start in calibration mode.
@@ -64,11 +76,17 @@ void setup(){
   DDRD |= B11110000;                                                                    //Configure digital poort 4, 5, 6 and 7 as output.
   DDRB |= B00010000;                                                                    //Configure digital poort 12 as output.
 
-  PCICR |= (1 << PCIE0);                                                                // set PCIE0 to enable PCMSK0 scan.
-  PCMSK0 |= (1 << PCINT0);                                                              // set PCINT0 (digital input 8) to trigger an interrupt on state change.
-  PCMSK0 |= (1 << PCINT1);                                                              // set PCINT1 (digital input 9)to trigger an interrupt on state change.
-  PCMSK0 |= (1 << PCINT2);                                                              // set PCINT2 (digital input 10)to trigger an interrupt on state change.
-  PCMSK0 |= (1 << PCINT3);                                                              // set PCINT3 (digital input 11)to trigger an interrupt on state change.
+//  PCICR |= (1 << PCIE0);                                                                // set PCIE0 to enable PCMSK0 scan.
+//  PCMSK0 |= (1 << PCINT0);                                                              // set PCINT0 (digital input 8) to trigger an interrupt on state change.
+//  PCMSK0 |= (1 << PCINT1);                                                              // set PCINT1 (digital input 9)to trigger an interrupt on state change.
+//  PCMSK0 |= (1 << PCINT2);                                                              // set PCINT2 (digital input 10)to trigger an interrupt on state change.
+//  PCMSK0 |= (1 << PCINT3);                                                              // set PCINT3 (digital input 11)to trigger an interrupt on state change.
+
+ // Make PF0-5 outputs:
+  DDRF   = _BV(PF0) | _BV(PF1) | _BV(PF2) | _BV(PF3) | _BV(PF4) | _BV(PF5);
+  PCICR  = _BV(PCIE0);
+  PCMSK0 = _BV(PCINT0) | _BV(PCINT1) | _BV(PCINT2) | _BV(PCINT3) | _BV(PCINT6) | _BV(PCINT7);
+
 
   for(data = 0; data <= 35; data++)eeprom_data[data] = EEPROM.read(data);               //Read EEPROM for faster data access
 
@@ -317,7 +335,8 @@ ISR(PCINT0_vect){
   }
   else if(last_channel_1 == 1){                                //Input 8 is not high and changed from 1 to 0.
     last_channel_1 = 0;                                        //Remember current input state.
-    receiver_input[1] = current_time - timer_1;                 //Channel 1 is current_time - timer_1.
+    rc_samples1.add( current_time - timer_1);
+	receiver_input[1] = rc_samples1.getMedian();                 //Channel 1 is current_time - timer_1.
   }
   //Channel 2=========================================
   if(PINB & B00000010 ){                                       //Is input 9 high?
@@ -328,7 +347,8 @@ ISR(PCINT0_vect){
   }
   else if(last_channel_2 == 1){                                //Input 9 is not high and changed from 1 to 0.
     last_channel_2 = 0;                                        //Remember current input state.
-    receiver_input[2] = current_time - timer_2;                //Channel 2 is current_time - timer_2.
+    rc_samples2.add( current_time - timer_2);
+	receiver_input[2] = rc_samples2.getMedian();                //Channel 2 is current_time - timer_2.
   }
   //Channel 3=========================================
   if(PINB & B00000100 ){                                       //Is input 10 high?
@@ -339,7 +359,8 @@ ISR(PCINT0_vect){
   }
   else if(last_channel_3 == 1){                                //Input 10 is not high and changed from 1 to 0.
     last_channel_3 = 0;                                        //Remember current input state.
-    receiver_input[3] = current_time - timer_3;                //Channel 3 is current_time - timer_3.
+    rc_samples3.add( current_time - timer_3);
+	receiver_input[3] = rc_samples3.getMedian();                //Channel 3 is current_time - timer_3.
   }
   //Channel 4=========================================
   if(PINB & B00001000 ){                                       //Is input 11 high?
@@ -350,7 +371,8 @@ ISR(PCINT0_vect){
   }
   else if(last_channel_4 == 1){                                //Input 11 is not high and changed from 1 to 0.
     last_channel_4 = 0;                                        //Remember current input state.
-    receiver_input[4] = current_time - timer_4;                //Channel 4 is current_time - timer_4.
+	rc_samples4.add( current_time - timer_4);    
+	receiver_input[4] = rc_samples4.getMedian();                //Channel 4 is current_time - timer_4.
   }
 }
 
