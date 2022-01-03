@@ -50,7 +50,7 @@ RunningMedian rc_samples4 = RunningMedian(4);
 byte last_channel_1, last_channel_2, last_channel_3, last_channel_4;
 byte eeprom_data[36], start, data;
 boolean new_function_request,first_angle;
-int receiver_input_channel_1, receiver_input_channel_2, receiver_input_channel_3, receiver_input_channel_4;
+volatile int receiver_input_channel_1, receiver_input_channel_2, receiver_input_channel_3, receiver_input_channel_4;
 int esc_1, esc_2, esc_3, esc_4;
 int counter_channel_1, counter_channel_2, counter_channel_3, counter_channel_4;
 int receiver_input[5];
@@ -113,6 +113,8 @@ void loop(){
 
   if(Serial.available() > 0){
     data = Serial.read();                                                               //Read the incomming byte.
+    delay(100);                                                                         //Wait for any other bytes to come in
+    while(Serial.available() > 0)loop_counter = Serial.read();                          //Empty the Serial buffer.
     new_function_request = true;                                                        //Set the new request flag.
     loop_counter = 0;                                                                   //Reset the loop_counter variable.
     cal_int = 0;                                                                        //Reset the cal_int variable to undo the calibration.
