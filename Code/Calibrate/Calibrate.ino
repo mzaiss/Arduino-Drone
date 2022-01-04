@@ -114,7 +114,7 @@ void loop(){
   if(Serial.available() > 0){
     data = Serial.read();                                                               //Read the incomming byte.
     delay(100);                                                                         //Wait for any other bytes to come in
-    while(Serial.available() > 0)loop_counter = Serial.read();                          //Empty the Serial buffer.
+    loop_counter = Serial.read();                          //Empty the Serial buffer.
     new_function_request = true;                                                        //Set the new request flag.
     loop_counter = 0;                                                                   //Reset the loop_counter variable.
     cal_int = 0;                                                                        //Reset the cal_int variable to undo the calibration.
