@@ -1,4 +1,18 @@
+///////////////////////////////////////////////////////////////////////////////////////
+//  pitch | roll   --  throttle |  und yaw --
+//        ___                  ___
+//      /  |  \              /  |  \             
+//     | --o-- |            | --o-- |            
+//      \__|__/              \__|__/     
+        
+// am receiver: throttle = 1 ,   yaw =2,  pitch =3,   roll = 4
 
+
+#include <RunningMedian.h>
+RunningMedian rc_samples1 = RunningMedian(4);
+RunningMedian rc_samples2 = RunningMedian(4);
+RunningMedian rc_samples3 = RunningMedian(4);
+RunningMedian rc_samples4 = RunningMedian(4);
 
 #include <Wire.h>                          //Include the Wire.h library so we can communicate with the gyro.
 #include <EEPROM.h>                        //Include the EEPROM.h library so we can store information onto the EEPROM
@@ -68,10 +82,11 @@ void setup(){
 
   //Arduino (Atmega) pins default to inputs, so they don't need to be explicitly declared as inputs.
   DDRD |= B11110000;                                                        //Configure digital poort 4, 5, 6 and 7 as output.
-  DDRB |= B00110000;                                                        //Configure digital poort 12 and 13 as output.
+  DDRB |= B11110000;                                                        //Configure digital poort 12 and 13 as output.
 
   //Use the led on the Arduino for startup indication.
-  digitalWrite(12,HIGH);                                                    //Turn on the warning led.
+  pinMode(7, OUTPUT); // Setzt den Digitalpin 7 als Outputpin
+  digitalWrite(7,HIGH);                                                    //Turn on the warning led.
 
   //Check the EEPROM signature to make sure that the setup program is executed.
   while(eeprom_data[33] != 'J' || eeprom_data[34] != 'M' || eeprom_data[35] != 'B')delay(10);
@@ -83,23 +98,23 @@ void setup(){
   set_gyro_registers();                                                     //Set the specific gyro registers.
 
   for (cal_int = 0; cal_int < 1250 ; cal_int ++){                           //Wait 5 seconds before continuing.
-    PORTD |= B11110000;                                                     //Set digital poort 4, 5, 6 and 7 high.
+    PORTB |= B11110000;                                                     //Set digital poort 4, 5, 6 and 7 high.
     delayMicroseconds(1000);                                                //Wait 1000us.
-    PORTD &= B00001111;                                                     //Set digital poort 4, 5, 6 and 7 low.
+    PORTB &= B00001111;                                                     //Set digital poort 4, 5, 6 and 7 low.
     delayMicroseconds(3000);                                                //Wait 3000us.
   }
 
   //Let's take multiple gyro data samples so we can determine the average gyro offset (calibration).
   for (cal_int = 0; cal_int < 2000 ; cal_int ++){                           //Take 2000 readings for calibration.
-    if(cal_int % 15 == 0)digitalWrite(12, !digitalRead(12));                //Change the led status to indicate calibration.
+    if(cal_int % 15 == 0)digitalWrite(7, !digitalRead(7));                //Change the led status to indicate calibration.
     gyro_signalen();                                                        //Read the gyro output.
     gyro_axis_cal[1] += gyro_axis[1];                                       //Ad roll value to gyro_roll_cal.
     gyro_axis_cal[2] += gyro_axis[2];                                       //Ad pitch value to gyro_pitch_cal.
     gyro_axis_cal[3] += gyro_axis[3];                                       //Ad yaw value to gyro_yaw_cal.
     //We don't want the esc's to be beeping annoyingly. So let's give them a 1000us puls while calibrating the gyro.
-    PORTD |= B11110000;                                                     //Set digital poort 4, 5, 6 and 7 high.
+    PORTB |= B11110000;                                                     //Set digital poort 4, 5, 6 and 7 high.
     delayMicroseconds(1000);                                                //Wait 1000us.
-    PORTD &= B00001111;                                                     //Set digital poort 4, 5, 6 and 7 low.
+    PORTB &= B00001111;                                                     //Set digital poort 4, 5, 6 and 7 low.
     delay(3);                                                               //Wait 3 milliseconds before the next loop.
   }
   //Now that we have 2000 measures, we need to devide by 2000 to get the average gyro offset.
@@ -107,11 +122,16 @@ void setup(){
   gyro_axis_cal[2] /= 2000;                                                 //Divide the pitch total by 2000.
   gyro_axis_cal[3] /= 2000;                                                 //Divide the yaw total by 2000.
 
-  PCICR |= (1 << PCIE0);                                                    //Set PCIE0 to enable PCMSK0 scan.
-  PCMSK0 |= (1 << PCINT0);                                                  //Set PCINT0 (digital input 8) to trigger an interrupt on state change.
-  PCMSK0 |= (1 << PCINT1);                                                  //Set PCINT1 (digital input 9)to trigger an interrupt on state change.
-  PCMSK0 |= (1 << PCINT2);                                                  //Set PCINT2 (digital input 10)to trigger an interrupt on state change.
-  PCMSK0 |= (1 << PCINT3);                                                  //Set PCINT3 (digital input 11)to trigger an interrupt on state change.
+//  PCICR |= (1 << PCIE0);                                                                // set PCIE0 to enable PCMSK0 scan.
+//  PCMSK0 |= (1 << PCINT0);                                                              // set PCINT0 (digital input 8) to trigger an interrupt on state change.
+//  PCMSK0 |= (1 << PCINT1);                                                              // set PCINT1 (digital input 9)to trigger an interrupt on state change.
+//  PCMSK0 |= (1 << PCINT2);                                                              // set PCINT2 (digital input 10)to trigger an interrupt on state change.
+//  PCMSK0 |= (1 << PCINT3);                                                              // set PCINT3 (digital input 11)to trigger an interrupt on state change.
+
+ // Make PF0-5 outputs:
+  DDRF   = _BV(PF0) | _BV(PF1) | _BV(PF2) | _BV(PF3) | _BV(PF4) | _BV(PF5);
+  PCICR  = _BV(PCIE0);
+  PCMSK0 = _BV(PCINT0) | _BV(PCINT1) | _BV(PCINT2) | _BV(PCINT3) | _BV(PCINT6) | _BV(PCINT7);
 
   //Wait until the receiver is active and the throtle is set to the lower position.
   while(receiver_input_channel_3 < 990 || receiver_input_channel_3 > 1020 || receiver_input_channel_4 < 1400){
@@ -119,12 +139,12 @@ void setup(){
     receiver_input_channel_4 = convert_receiver_channel(4);                 //Convert the actual receiver signals for yaw to the standard 1000 - 2000us
     start ++;                                                               //While waiting increment start whith every loop.
     //We don't want the esc's to be beeping annoyingly. So let's give them a 1000us puls while waiting for the receiver inputs.
-    PORTD |= B11110000;                                                     //Set digital poort 4, 5, 6 and 7 high.
+    PORTB |= B11110000;                                                     //Set digital poort 4, 5, 6 and 7 high.
     delayMicroseconds(1000);                                                //Wait 1000us.
-    PORTD &= B00001111;                                                     //Set digital poort 4, 5, 6 and 7 low.
+    PORTB &= B00001111;                                                     //Set digital poort 4, 5, 6 and 7 low.
     delay(3);                                                               //Wait 3 milliseconds before the next loop.
     if(start == 125){                                                       //Every 125 loops (500ms).
-      digitalWrite(12, !digitalRead(12));                                   //Change the led status.
+      digitalWrite(7, !digitalRead(7));                                   //Change the led status.
       start = 0;                                                            //Start again at 0.
     }
   }
@@ -141,7 +161,7 @@ void setup(){
   loop_timer = micros();                                                    //Set the timer for the next loop.
 
   //When everything is done, turn off the led.
-  digitalWrite(12,LOW);                                                     //Turn off the warning led.
+  digitalWrite(7,LOW);                                                     //Turn off the warning led.
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Main program loop
@@ -247,7 +267,7 @@ void loop(){
   battery_voltage = battery_voltage * 0.92 + (analogRead(0) + 65) * 0.09853;
 
   //Turn on the led if battery voltage is to low.
-  if(battery_voltage < 1000 && battery_voltage > 600)digitalWrite(12, HIGH);
+  if(battery_voltage < 1000 && battery_voltage > 600)digitalWrite(7, HIGH);
 
 
   throttle = receiver_input_channel_3;                                      //We need the throttle signal as a base signal.
@@ -285,14 +305,14 @@ void loop(){
   }
 
     
-  if(micros() - loop_timer > 4050)digitalWrite(12, HIGH);                   //Turn on the LED if the loop time exceeds 4050us.
+  if(micros() - loop_timer > 4050)digitalWrite(7, HIGH);                   //Turn on the LED if the loop time exceeds 4050us.
   
   //All the information for controlling the motor's is available.
   //The refresh rate is 250Hz. That means the esc's need there pulse every 4ms.
   while(micros() - loop_timer < 4000);                                      //We wait until 4000us are passed.
   loop_timer = micros();                                                    //Set the timer for the next loop.
 
-  PORTD |= B11110000;                                                       //Set digital outputs 4,5,6 and 7 high.
+  PORTB |= B11110000;                                                       //Set digital outputs 4,5,6 and 7 high.
   timer_channel_1 = esc_1 + loop_timer;                                     //Calculate the time of the faling edge of the esc-1 pulse.
   timer_channel_2 = esc_2 + loop_timer;                                     //Calculate the time of the faling edge of the esc-2 pulse.
   timer_channel_3 = esc_3 + loop_timer;                                     //Calculate the time of the faling edge of the esc-3 pulse.
@@ -302,12 +322,12 @@ void loop(){
   //Get the current gyro and receiver data and scale it to degrees per second for the pid calculations.
   gyro_signalen();
 
-  while(PORTD >= 16){                                                       //Stay in this loop until output 4,5,6 and 7 are low.
+  while(PORTB >= 16){                                                       //Stay in this loop until output 4,5,6 and 7 are low.
     esc_loop_timer = micros();                                              //Read the current time.
-    if(timer_channel_1 <= esc_loop_timer)PORTD &= B11101111;                //Set digital output 4 to low if the time is expired.
-    if(timer_channel_2 <= esc_loop_timer)PORTD &= B11011111;                //Set digital output 5 to low if the time is expired.
-    if(timer_channel_3 <= esc_loop_timer)PORTD &= B10111111;                //Set digital output 6 to low if the time is expired.
-    if(timer_channel_4 <= esc_loop_timer)PORTD &= B01111111;                //Set digital output 7 to low if the time is expired.
+    if(timer_channel_1 <= esc_loop_timer)PORTB &= B11101111;                //Set digital output 4 to low if the time is expired.
+    if(timer_channel_2 <= esc_loop_timer)PORTB &= B11011111;                //Set digital output 5 to low if the time is expired.
+    if(timer_channel_3 <= esc_loop_timer)PORTB &= B10111111;                //Set digital output 6 to low if the time is expired.
+    if(timer_channel_4 <= esc_loop_timer)PORTB &= B01111111;                //Set digital output 7 to low if the time is expired.
   }
 }
 
@@ -318,49 +338,52 @@ void loop(){
 ISR(PCINT0_vect){
   current_time = micros();
   //Channel 1=========================================
-  if(PINB & B00000001){                                                     //Is input 8 high?
-    if(last_channel_1 == 0){                                                //Input 8 changed from 0 to 1.
-      last_channel_1 = 1;                                                   //Remember current input state.
-      timer_1 = current_time;                                               //Set timer_1 to current_time.
+  if(PINB & B00000001){                                        //Is input 8 high?
+    if(last_channel_1 == 0){                                   //Input 8 changed from 0 to 1.
+      last_channel_1 = 1;                                      //Remember current input state.
+      timer_1 = current_time;                                  //Set timer_1 to current_time.
     }
   }
-  else if(last_channel_1 == 1){                                             //Input 8 is not high and changed from 1 to 0.
-    last_channel_1 = 0;                                                     //Remember current input state.
-    receiver_input[1] = current_time - timer_1;                             //Channel 1 is current_time - timer_1.
+  else if(last_channel_1 == 1){                                //Input 8 is not high and changed from 1 to 0.
+    last_channel_1 = 0;                                        //Remember current input state.
+    rc_samples1.add( current_time - timer_1);
+	receiver_input[1] = rc_samples1.getMedian();                 //Channel 1 is current_time - timer_1.
   }
   //Channel 2=========================================
-  if(PINB & B00000010 ){                                                    //Is input 9 high?
-    if(last_channel_2 == 0){                                                //Input 9 changed from 0 to 1.
-      last_channel_2 = 1;                                                   //Remember current input state.
-      timer_2 = current_time;                                               //Set timer_2 to current_time.
+  if(PINB & B00000010 ){                                       //Is input 9 high?
+    if(last_channel_2 == 0){                                   //Input 9 changed from 0 to 1.
+      last_channel_2 = 1;                                      //Remember current input state.
+      timer_2 = current_time;                                  //Set timer_2 to current_time.
     }
   }
-  else if(last_channel_2 == 1){                                             //Input 9 is not high and changed from 1 to 0.
-    last_channel_2 = 0;                                                     //Remember current input state.
-    receiver_input[2] = current_time - timer_2;                             //Channel 2 is current_time - timer_2.
+  else if(last_channel_2 == 1){                                //Input 9 is not high and changed from 1 to 0.
+    last_channel_2 = 0;                                        //Remember current input state.
+    rc_samples2.add( current_time - timer_2);
+	receiver_input[2] = rc_samples2.getMedian();                //Channel 2 is current_time - timer_2.
   }
   //Channel 3=========================================
-  if(PINB & B00000100 ){                                                    //Is input 10 high?
-    if(last_channel_3 == 0){                                                //Input 10 changed from 0 to 1.
-      last_channel_3 = 1;                                                   //Remember current input state.
-      timer_3 = current_time;                                               //Set timer_3 to current_time.
+  if(PINB & B00000100 ){                                       //Is input 10 high?
+    if(last_channel_3 == 0){                                   //Input 10 changed from 0 to 1.
+      last_channel_3 = 1;                                      //Remember current input state.
+      timer_3 = current_time;                                  //Set timer_3 to current_time.
     }
   }
-  else if(last_channel_3 == 1){                                             //Input 10 is not high and changed from 1 to 0.
-    last_channel_3 = 0;                                                     //Remember current input state.
-    receiver_input[3] = current_time - timer_3;                             //Channel 3 is current_time - timer_3.
-
+  else if(last_channel_3 == 1){                                //Input 10 is not high and changed from 1 to 0.
+    last_channel_3 = 0;                                        //Remember current input state.
+    rc_samples3.add( current_time - timer_3);
+	receiver_input[3] = rc_samples3.getMedian();                //Channel 3 is current_time - timer_3.
   }
   //Channel 4=========================================
-  if(PINB & B00001000 ){                                                    //Is input 11 high?
-    if(last_channel_4 == 0){                                                //Input 11 changed from 0 to 1.
-      last_channel_4 = 1;                                                   //Remember current input state.
-      timer_4 = current_time;                                               //Set timer_4 to current_time.
+  if(PINB & B00001000 ){                                       //Is input 11 high?
+    if(last_channel_4 == 0){                                   //Input 11 changed from 0 to 1.
+      last_channel_4 = 1;                                      //Remember current input state.
+      timer_4 = current_time;                                  //Set timer_4 to current_time.
     }
   }
-  else if(last_channel_4 == 1){                                             //Input 11 is not high and changed from 1 to 0.
-    last_channel_4 = 0;                                                     //Remember current input state.
-    receiver_input[4] = current_time - timer_4;                             //Channel 4 is current_time - timer_4.
+  else if(last_channel_4 == 1){                                //Input 11 is not high and changed from 1 to 0.
+    last_channel_4 = 0;                                        //Remember current input state.
+	rc_samples4.add( current_time - timer_4);    
+	receiver_input[4] = rc_samples4.getMedian();                //Channel 4 is current_time - timer_4.
   }
 }
 
@@ -508,7 +531,7 @@ void set_gyro_registers(){
     Wire.requestFrom(gyro_address, 1);                                         //Request 1 bytes from the gyro
     while(Wire.available() < 1);                                               //Wait until the 6 bytes are received
     if(Wire.read() != 0x08){                                                   //Check if the value is 0x08
-      digitalWrite(12,HIGH);                                                   //Turn on the warning led
+      digitalWrite(7,HIGH);                                                   //Turn on the warning led
       while(1)delay(10);                                                       //Stay in this loop for ever
     }
 
