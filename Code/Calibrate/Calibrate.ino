@@ -69,12 +69,13 @@ double gyro_axis_cal[4];
 //Setup routine
 void setup(){
   Serial.begin(57600);                                                                  //Start the serial port.
+  Serial.println("setup");
   Wire.begin();                                                                         //Start the wire library as master
   TWBR = 12;                                                                            //Set the I2C clock speed to 400kHz.
 
   //Arduino Uno pins default to inputs, so they don't need to be explicitly declared as inputs.
   DDRD |= B11110000;                                                                    //Configure digital poort 4, 5, 6 and 7 as output.
-  DDRB |= B00010000;                                                                    //Configure digital poort 12 as output.
+  DDRB |= B11110000; // we use PORTB for the ESC output at atmega PORTB is PIN 10-13 //Configure digital poort 12 as output.
 
 //  PCICR |= (1 << PCIE0);                                                                // set PCIE0 to enable PCMSK0 scan.
 //  PCMSK0 |= (1 << PCINT0);                                                              // set PCINT0 (digital input 8) to trigger an interrupt on state change.
@@ -113,8 +114,10 @@ void loop(){
 
   if(Serial.available() > 0){
     data = Serial.read();                                                               //Read the incomming byte.
-    delay(100);                                                                         //Wait for any other bytes to come in
-    loop_counter = Serial.read();                          //Empty the Serial buffer.
+    delay(100);
+    loop_counter=    Serial.read();
+    Serial.println(data);                                                                      //Wait for any other bytes to come in
+   // while(Serial.available() > 0) data = Serial.read();                          //Empty the Serial buffer.
     new_function_request = true;                                                        //Set the new request flag.
     loop_counter = 0;                                                                   //Reset the loop_counter variable.
     cal_int = 0;                                                                        //Reset the cal_int variable to undo the calibration.
@@ -263,9 +266,9 @@ void loop(){
         gyro_axis_cal[2] += gyro_axis[2];                                               //Ad pitch value to gyro_pitch_cal.
         gyro_axis_cal[3] += gyro_axis[3];                                               //Ad yaw value to gyro_yaw_cal.
         //We don't want the esc's to be beeping annoyingly. So let's give them a 1000us puls while calibrating the gyro.
-        PORTD |= B11110000;                                                             //Set digital poort 4, 5, 6 and 7 high.
+        PORTB |= B11110000;                                                             //Set digital poort 4, 5, 6 and 7 high.
         delayMicroseconds(1000);                                                        //Wait 1000us.
-        PORTD &= B00001111;                                                             //Set digital poort 4, 5, 6 and 7 low.
+        PORTB &= B00001111;                                                             //Set digital poort 4, 5, 6 and 7 low.
         delay(3);                                                                       //Wait 3 milliseconds before the next loop.
       }
       Serial.println(".");
@@ -276,9 +279,9 @@ void loop(){
     }
     else{
       ///We don't want the esc's to be beeping annoyingly. So let's give them a 1000us puls while calibrating the gyro.
-      PORTD |= B11110000;                                                               //Set digital poort 4, 5, 6 and 7 high.
+      PORTB |= B11110000;                                                               //Set digital poort 4, 5, 6 and 7 high.
       delayMicroseconds(1000);                                                          //Wait 1000us.
-      PORTD &= B00001111;                                                               //Set digital poort 4, 5, 6 and 7 low.
+      PORTB &= B00001111;                                                               //Set digital poort 4, 5, 6 and 7 low.
 
       //Let's get the current gyro data.
       gyro_signalen();
@@ -452,18 +455,18 @@ void print_signals(){
 
 void esc_pulse_output(){
   zero_timer = micros();
-  PORTD |= B11110000;                                            //Set port 4, 5, 6 and 7 high at once
+  PORTB |= B11110000;                                            //Set port 4, 5, 6 and 7 high at once
   timer_channel_1 = esc_1 + zero_timer;                          //Calculate the time when digital port 4 is set low.
   timer_channel_2 = esc_2 + zero_timer;                          //Calculate the time when digital port 5 is set low.
   timer_channel_3 = esc_3 + zero_timer;                          //Calculate the time when digital port 6 is set low.
   timer_channel_4 = esc_4 + zero_timer;                          //Calculate the time when digital port 7 is set low.
 
-  while(PORTD >= 16){                                            //Execute the loop until digital port 4 to 7 is low.
+  while(PORTB >= 16){                                            //Execute the loop until digital port 4 to 7 is low.
     esc_loop_timer = micros();                                   //Check the current time.
-    if(timer_channel_1 <= esc_loop_timer)PORTD &= B11101111;     //When the delay time is expired, digital port 4 is set low.
-    if(timer_channel_2 <= esc_loop_timer)PORTD &= B11011111;     //When the delay time is expired, digital port 5 is set low.
-    if(timer_channel_3 <= esc_loop_timer)PORTD &= B10111111;     //When the delay time is expired, digital port 6 is set low.
-    if(timer_channel_4 <= esc_loop_timer)PORTD &= B01111111;     //When the delay time is expired, digital port 7 is set low.
+    if(timer_channel_1 <= esc_loop_timer)PORTB &= B11101111;     //When the delay time is expired, digital port 4 is set low.
+    if(timer_channel_2 <= esc_loop_timer)PORTB &= B11011111;     //When the delay time is expired, digital port 5 is set low.
+    if(timer_channel_3 <= esc_loop_timer)PORTB &= B10111111;     //When the delay time is expired, digital port 6 is set low.
+    if(timer_channel_4 <= esc_loop_timer)PORTB &= B01111111;     //When the delay time is expired, digital port 7 is set low.
   }
 }
 
@@ -540,10 +543,3 @@ void gyro_signalen(){
   acc_z = acc_axis[eeprom_data[30] & 0b00000011];                //Set acc_z to the correct axis that was stored in the EEPROM.
   if(eeprom_data[30] & 0b10000000)acc_z *= -1;                   //Invert acc_z if the MSB of EEPROM bit 30 is set.
 }
-
-
-
-
-
-
-
