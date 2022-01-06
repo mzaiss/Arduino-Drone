@@ -105,6 +105,13 @@ Direkte Weiterleitungen zum Code:
 [Calibration](https://github.com/StefanScheunemann/Arduino-Drone/tree/master/Code/Calibrate)  
 [Flight controller](https://github.com/StefanScheunemann/Arduino-Drone/tree/master/Code/Flight_controller)  
   
+Der Code verwendet direkte PORT-Manipulationen, anstatt den Arduino-typischen Einzel-PIN-Operationen. Dies ermöglicht das effiziente ansteuern mehrerer PINS mit Binärcodes: 
+- DDRB =  B11110000;
+- PORTB = B11110000;
+  
+für Outputs muss auch das data direction register (DDR) entsprechend geändert werden. Mehr dazu hier: http://www.netzmafia.de/skripten/hardware/Arduino/Programmierung/portmanipulation.html
+  
+  
 ####Setup<a name="Setup"><a/>
 Im Setup wird die gesamte Hardware für das Arduino kalibriert. Um dies zu tun, muss der Setup-Sketch auf den Arduino geladen werden und am PC im Arduino-Programm der serielle Monitor geöffnet werden. Im seriellen Monitor muss die Baudrate auf 57600 eingestellt werden für diesen Vorgang.  
 Falls während des Setups Fehler auftreten, wird ein Fehlercode angezeigt. Jeder Fehler ist dokumentiert und mit Lösungen versehen. Diese Lösungen werden im späteren Verlauf dieser Anleitung dokumentiert. [Abkürzung zu Fehlercodes](#Fehler)  
